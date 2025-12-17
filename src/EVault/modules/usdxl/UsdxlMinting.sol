@@ -10,6 +10,7 @@ import {AssetTransfers} from "../shared/AssetTransfers.sol";
 import {SafeERC20Lib} from "../shared/lib/SafeERC20Lib.sol";
 import {ProxyUtils} from "../shared/lib/ProxyUtils.sol";
 import {IFlashLoan} from "../../interfaces/IFlashLoan.sol";
+import {BorrowingModule} from "../Borrowing.sol";
 
 import "../shared/types/Types.sol";
 
@@ -19,49 +20,26 @@ import "../shared/types/Types.sol";
 /// @custom:security-contact security@last.net
 /// @author Last Labs (https://www.last.net/)
 /// @notice An EVault module handling USDXL borrowing and repaying of vault assets
-abstract contract UsdxlMintingModule is IBorrowing, AssetTransfers, BalanceUtils, LiquidityUtils {
+abstract contract UsdxlMintingModule is BorrowingModule {
     using TypesLib for uint256;
     using SafeERC20Lib for IERC20;
 
     /// @inheritdoc IBorrowing
-    function totalBorrows() public view virtual nonReentrantView returns (uint256) {
+    function totalBorrows() public view override virtual nonReentrantView returns (uint256) {
+        //TODO: may want to check facilitator bucket for this vault on USDXL
         return loadVault().totalBorrows.toAssetsUp().toUint();
     }
 
     /// @inheritdoc IBorrowing
-    function totalBorrowsExact() public view virtual nonReentrantView returns (uint256) {
+    function totalBorrowsExact() public view override virtual nonReentrantView returns (uint256) {
+        //TODO: may want to check facilitator bucket for this vault on USDXL
         return loadVault().totalBorrows.toUint();
     }
 
     /// @inheritdoc IBorrowing
-    function cash() public view virtual nonReentrantView returns (uint256) {
+    function cash() public view override virtual nonReentrantView returns (uint256) {
         //TODO: check facilitator bucket for this vault on USDXL
         return vaultStorage.cash.toUint();
-    }
-
-    /// @inheritdoc IBorrowing
-    function debtOf(address account) public view virtual nonReentrantView returns (uint256) {
-        return getCurrentOwed(loadVault(), account).toAssetsUp().toUint();
-    }
-
-    /// @inheritdoc IBorrowing
-    function debtOfExact(address account) public view virtual nonReentrantView returns (uint256) {
-        return getCurrentOwed(loadVault(), account).toUint();
-    }
-
-    /// @inheritdoc IBorrowing
-    function interestRate() public view virtual nonReentrantView returns (uint256) {
-        return computeInterestRateView(loadVault());
-    }
-
-    /// @inheritdoc IBorrowing
-    function interestAccumulator() public view virtual nonReentrantView returns (uint256) {
-        return loadVault().interestAccumulator;
-    }
-
-    /// @inheritdoc IBorrowing
-    function dToken() public view virtual reentrantOK returns (address) {
-        return calculateDTokenAddress();
     }
 
     /// @inheritdoc IBorrowing
@@ -100,9 +78,10 @@ abstract contract UsdxlMintingModule is IBorrowing, AssetTransfers, BalanceUtils
     }
 
     //TODO: this should not be possible since there are no depositors
+    //TODO: unless we want to allow external USDXL depositors
 
     /// @inheritdoc IBorrowing
-    function repayWithShares(uint256 amount, address receiver) public virtual nonReentrant returns (uint256, uint256) {
+    function repayWithShares(uint256 amount, address receiver) public override virtual nonReentrant returns (uint256, uint256) {
         (VaultCache memory vaultCache, address account) = initOperation(OP_REPAY_WITH_SHARES, CHECKACCOUNT_CALLER);
 
         Assets owed = getCurrentOwed(vaultCache, receiver).toAssetsUp();
@@ -135,24 +114,10 @@ abstract contract UsdxlMintingModule is IBorrowing, AssetTransfers, BalanceUtils
         return (shares.toUint(), assets.toUint());
     }
 
-    /// @inheritdoc IBorrowing
-    function pullDebt(uint256 amount, address from) public virtual nonReentrant {
-        (VaultCache memory vaultCache, address account) = initOperation(OP_PULL_DEBT, CHECKACCOUNT_CALLER);
-
-        if (from == account) revert E_SelfTransfer();
-
-        Assets assets = amount == type(uint256).max ? getCurrentOwed(vaultCache, from).toAssetsUp() : amount.toAssets();
-
-        if (assets.isZero()) return;
-        transferBorrow(vaultCache, from, account, assets);
-
-        emit PullDebt(from, account, assets.toUint());
-    }
-
     //TODO: flashLoan could either mint USDXL itself or use the UsdxlFlashMinter
 
     /// @inheritdoc IBorrowing
-    function flashLoan(uint256 amount, bytes calldata data) public virtual nonReentrant {
+    function flashLoan(uint256 amount, bytes calldata data) public override virtual nonReentrant {
         address account = EVCAuthenticate();
         callHook(vaultStorage.hookedOps, OP_FLASHLOAN, account);
 
@@ -165,11 +130,6 @@ abstract contract UsdxlMintingModule is IBorrowing, AssetTransfers, BalanceUtils
         IFlashLoan(account).onFlashLoan(data);
 
         if (asset.balanceOf(address(this)) < origBalance) revert E_FlashLoanNotRepaid();
-    }
-
-    /// @inheritdoc IBorrowing
-    function touch() public virtual nonReentrant {
-        initOperation(OP_TOUCH, CHECKACCOUNT_NONE);
     }
 }
 
