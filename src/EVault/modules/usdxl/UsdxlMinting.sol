@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.0;
 
-import {IBorrowing} from "../IEVault.sol";
-import {Base} from "../shared/Base.sol";
-import {BalanceUtils} from "../shared/BalanceUtils.sol";
-import {LiquidityUtils} from "../shared/LiquidityUtils.sol";
-import {AssetTransfers} from "../shared/AssetTransfers.sol";
-import {SafeERC20Lib} from "../shared/lib/SafeERC20Lib.sol";
-import {ProxyUtils} from "../shared/lib/ProxyUtils.sol";
-import {IFlashLoan} from "../../interfaces/IFlashLoan.sol";
+import {IBorrowing} from "../../IEVault.sol";
+import {Base} from "../../shared/Base.sol";
+import {BalanceUtils} from "../../shared/BalanceUtils.sol";
+import {LiquidityUtils} from "../../shared/LiquidityUtils.sol";
+import {AssetTransfers} from "../../shared/AssetTransfers.sol";
+import {SafeERC20Lib} from "../../shared/lib/SafeERC20Lib.sol";
+import {ProxyUtils} from "../../shared/lib/ProxyUtils.sol";
+import {IFlashLoan} from "../../../interfaces/IFlashLoan.sol";
 import {BorrowingModule} from "../Borrowing.sol";
 
-import "../shared/types/Types.sol";
+import "../../shared/types/Types.sol";
 
 //TODO: need interest rate controller with IIRM.computeInterestRate and IIRM.computeInterestRateView support
 
@@ -43,7 +43,7 @@ abstract contract UsdxlMintingModule is BorrowingModule {
     }
 
     /// @inheritdoc IBorrowing
-    function borrow(uint256 amount, address receiver) public virtual nonReentrant returns (uint256) {
+    function borrow(uint256 amount, address receiver) public override virtual nonReentrant returns (uint256) {
         (VaultCache memory vaultCache, address account) = initOperation(OP_BORROW, CHECKACCOUNT_CALLER);
 
         Assets assets = amount == type(uint256).max ? vaultCache.cash : amount.toAssets();
@@ -61,7 +61,7 @@ abstract contract UsdxlMintingModule is BorrowingModule {
     }
 
     /// @inheritdoc IBorrowing
-    function repay(uint256 amount, address receiver) public virtual nonReentrant returns (uint256) {
+    function repay(uint256 amount, address receiver) public override virtual nonReentrant returns (uint256) {
         (VaultCache memory vaultCache, address account) = initOperation(OP_REPAY, CHECKACCOUNT_NONE);
 
         uint256 owed = getCurrentOwed(vaultCache, receiver).toAssetsUp().toUint();
