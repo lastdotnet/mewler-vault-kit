@@ -14,6 +14,8 @@ import {BorrowingModule} from "../Borrowing.sol";
 
 import "../../shared/types/Types.sol";
 
+//TODO: need a way to harvest USDXL interest earned
+
 //TODO: need interest rate controller with IIRM.computeInterestRate and IIRM.computeInterestRateView support
 
 /// @title UsdxlMintingModule
